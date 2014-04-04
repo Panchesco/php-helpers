@@ -7,9 +7,9 @@
 		 * Return the current URI.
 		 * @return string
 		 */
-		 public static function current()
+		 public static function current($filter=true)
 		 {
-		 	return parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+		 	return ($filter===true) ? URI::xssClean(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH)) : arse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 		 }
 		
 		
@@ -19,7 +19,7 @@
 		 * @param $segment integer
 		 * @return string
 		 */
-		 public static function segment($segment=0)
+		 public static function segment($segment=0,$filter=true)
 		 {
 			
 			$uri	= parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
@@ -27,11 +27,55 @@
 	
 			if(isset($segs[$segment]))
 			{ 
-				return $segs[$segment];
+				return ( $filter===true ) ? URI::xssClean($segs[$segment]) : $segs[$segment];
 				} else { 
 					return NULL;
 				}
 				
+		}
+		
+		
+		/**
+		 * Filter xss.
+		 * Source: http://stackoverflow.com/a/1741568
+		 * Author: Safraz - http://sarfraznawaz.wordpress.com/
+		 * @param $data string
+		 * @return string
+		 */
+		public static function xssClean($data)
+		{
+		// Fix &entity\n;
+		$data = str_replace(array('&amp;','&lt;','&gt;'), array('&amp;amp;','&amp;lt;','&amp;gt;'), $data);
+		$data = preg_replace('/(&#*\w+)[\x00-\x20]+;/u', '$1;', $data);
+		$data = preg_replace('/(&#x*[0-9A-F]+);*/iu', '$1;', $data);
+		$data = html_entity_decode($data, ENT_COMPAT, 'UTF-8');
+		
+		// Remove any attribute starting with "on" or xmlns
+		$data = preg_replace('#(<[^>]+?[\x00-\x20"\'])(?:on|xmlns)[^>]*+>#iu', '$1>', $data);
+		
+		// Remove javascript: and vbscript: protocols
+		$data = preg_replace('#([a-z]*)[\x00-\x20]*=[\x00-\x20]*([`\'"]*)[\x00-\x20]*j[\x00-\x20]*a[\x00-\x20]*v[\x00-\x20]*a[\x00-\x20]*s[\x00-\x20]*c[\x00-\x20]*r[\x00-\x20]*i[\x00-\x20]*p[\x00-\x20]*t[\x00-\x20]*:#iu', '$1=$2nojavascript...', $data);
+		$data = preg_replace('#([a-z]*)[\x00-\x20]*=([\'"]*)[\x00-\x20]*v[\x00-\x20]*b[\x00-\x20]*s[\x00-\x20]*c[\x00-\x20]*r[\x00-\x20]*i[\x00-\x20]*p[\x00-\x20]*t[\x00-\x20]*:#iu', '$1=$2novbscript...', $data);
+		$data = preg_replace('#([a-z]*)[\x00-\x20]*=([\'"]*)[\x00-\x20]*-moz-binding[\x00-\x20]*:#u', '$1=$2nomozbinding...', $data);
+		
+		// Only works in IE: <span style="width: expression(alert('Ping!'));"></span>
+		$data = preg_replace('#(<[^>]+?)style[\x00-\x20]*=[\x00-\x20]*[`\'"]*.*?expression[\x00-\x20]*\([^>]*+>#i', '$1>', $data);
+		$data = preg_replace('#(<[^>]+?)style[\x00-\x20]*=[\x00-\x20]*[`\'"]*.*?behaviour[\x00-\x20]*\([^>]*+>#i', '$1>', $data);
+		$data = preg_replace('#(<[^>]+?)style[\x00-\x20]*=[\x00-\x20]*[`\'"]*.*?s[\x00-\x20]*c[\x00-\x20]*r[\x00-\x20]*i[\x00-\x20]*p[\x00-\x20]*t[\x00-\x20]*:*[^>]*+>#iu', '$1>', $data);
+		
+		// Remove namespaced elements (we do not need them)
+		$data = preg_replace('#</*\w+:\w[^>]*+>#i', '', $data);
+		
+		do
+		{
+			// Remove really unwanted tags
+			$old_data = $data;
+			$data = preg_replace('#</*(?:applet|b(?:ase|gsound|link)|embed|frame(?:set)?|i(?:frame|layer)|l(?:ayer|ink)|meta|object|s(?:cript|tyle)|title|xml)[^>]*+>#i', '', $data);
+		}
+		while ($old_data !== $data);
+		
+		// we are done...
+		return $data;
 		}
 		
 		
