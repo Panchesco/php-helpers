@@ -9,7 +9,7 @@
 		 */
 		 public static function current($filter=true)
 		 {
-		 	return ($filter===true) ? URI::xssClean(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH)) : arse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+		 	return ($filter===true) ? URI::xssClean(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH)) : parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 		 }
 		
 		
@@ -24,10 +24,12 @@
 			
 			$uri	= parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 			$segs	= explode("/",$uri);
+			
+			
 	
 			if(isset($segs[$segment]))
 			{ 
-				return ( $filter===true ) ? URI::xssClean($segs[$segment]) : $segs[$segment];
+				return ( $filter === true ) ? URI::xssClean($segs[$segment]) : $segs[$segment];
 				} else { 
 					return NULL;
 				}
